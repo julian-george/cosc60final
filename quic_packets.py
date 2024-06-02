@@ -2,6 +2,8 @@ from scapy.all import *
 from scapy.fields import *
 from scapy.layers import *
 
+from quic_frames import VarLenIntField
+
 
 # Base class for QUIC packets
 class QUICPacket(Packet):
@@ -13,9 +15,9 @@ class QUICPacket(Packet):
 
     def guess_payload_class(self, payload):
         if self.header_form == 1:  # Long Header
-            return QUICLongHeader
+            return QUICLongHeaderPacket
         else:  # Short Header
-            return QUIC1RTT
+            return QUIC1RTTPacket
 
     def extract_padding(self, s):
         return "", s
@@ -25,23 +27,8 @@ class QUICPacket(Packet):
 PacketNumberField = XIntField("packet_number", 0)
 
 
-# Payload should be integer list of supported QUIC versions
-# This is considered a "long header packet" but only shares length, not fields, with the rest of the category
-class QUICVersionNegotiation(QUICPacket):
-    fields_desc = QUICPacket.fields_desc + [
-        # Set to arbitrary value
-        BitField("unused", 0, 7),
-        # Must be zero for this packet type
-        BitField("version", 0, 32),
-        XByteField("dcid_len", 0),
-        XStrLenField("dcid", "", length_from=lambda pkt: pkt.dcid_len),
-        XByteField("scid_len", 0),
-        XStrLenField("scid", "", length_from=lambda pkt: pkt.scid_len),
-    ]
-
-
 # Long header base class
-class QUICLongHeader(QUICPacket):
+class QUICLongHeaderPacket(QUICPacket):
     fields_desc = QUICPacket.fields_desc + [
         BitEnumField(
             "type", 0, 2, {0: "Initial", 1: "0-RTT", 2: "Handshake", 3: "Retry"}
@@ -60,66 +47,87 @@ class QUICLongHeader(QUICPacket):
 
     def guess_payload_class(self, payload):
         if self.type == 0:
-            return QUICInitial
+            return QUICInitialPacket
         elif self.type == 1:
-            return QUIC0RTT
+            return QUIC0RTTPacket
         elif self.type == 2:
-            return QUICHandshake
+            return QUICHandshakePacket
         elif self.type == 3:
-            return QUICRetry
+            return QUICRetryPacket
 
 
-class QUICInitial(QUICLongHeader):
-    fields_desc = QUICLongHeader.fields_desc + [
-        XByteField("token_length", 0),
+# Payload should be integer list of supported QUIC versions
+# This is considered a "long header packet" but only shares length, not fields, with the rest of the category
+# TODO: should this inherit at all?
+class QUICVersionNegotiationPacket(QUICLongHeaderPacket):
+    fields_desc = QUICPacket.fields_desc + [
+        # Set to arbitrary value
+        BitField("unused", 0, 7),
+        # Must be zero for this packet type
+        BitField("version", 0, 32),
+        XByteField("dcid_len", 0),
+        XStrLenField("dcid", "", length_from=lambda pkt: pkt.dcid_len),
+        XByteField("scid_len", 0),
+        XStrLenField("scid", "", length_from=lambda pkt: pkt.scid_len),
+    ]
+
+
+class QUICInitialPacket(QUICLongHeaderPacket):
+    fields_desc = QUICLongHeaderPacket.fields_desc + [
+        VarLenIntField("token_length", 0),
         StrLenField("token", "", length_from=lambda pkt: pkt.token_length),
-        XByteField("length", 0),
+        VarLenIntField("length", 0),
         PacketNumberField,
     ]
 
-    def __init__(self, *args, packet_number_length=0, **kwargs):
-        super(QUICInitial, self).__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(QUICInitialPacket, self).__init__(*args, **kwargs)
         self.type = 0
 
 
-class QUIC0RTT(QUICLongHeader):
-    fields_desc = QUICLongHeader.fields_desc + [
-        XByteField("length", 0),
+class QUIC0RTTPacket(QUICLongHeaderPacket):
+    fields_desc = QUICLongHeaderPacket.fields_desc + [
+        VarLenIntField("length", 0),
         PacketNumberField,
     ]
 
-    def __init__(self, *args, packet_number_length=0, **kwargs):
-        super(QUIC0RTT, self).__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(QUIC0RTTPacket, self).__init__(*args, **kwargs)
         self.type = 1
 
 
-class QUICHandshake(QUICLongHeader):
-    fields_desc = QUICLongHeader.fields_desc + [
-        XByteField("length", 0),
+class QUICHandshakePacket(QUICLongHeaderPacket):
+    fields_desc = QUICLongHeaderPacket.fields_desc + [
+        VarLenIntField("length", 0),
         PacketNumberField,
     ]
 
-    def __init__(self, *args, packet_number_length=0, **kwargs):
-        super(QUIC0RTT, self).__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(QUICHandshakePacket, self).__init__(*args, **kwargs)
         self.type = 2
 
 
 # Has no payload
-class QUICRetry(QUICLongHeader):
-    fields_desc = QUICLongHeader.fields_desc + [
+class QUICRetryPacket(QUICLongHeaderPacket):
+    fields_desc = QUICLongHeaderPacket.fields_desc + [
         # Our implementation uses 128 bit retry tokens
         XStrFixedLenField("retry_token", "", 16),
         BitField("retry_integrity_tag", 0, 128),
     ]
 
     def __init__(self, *args, **kwargs):
-        super(QUICRetry, self).__init__(*args, **kwargs)
+        super(QUICRetryPacket, self).__init__(*args, **kwargs)
         self.type = 3
 
 
+# TODO: is this weird?
+class QUICShortHeaderPacket(QUICPacket):
+    pass
+
+
 # The only short header packet defined in the RFC
-class QUIC1RTT(QUICPacket):
-    fields_desc = QUICPacket.fields_desc + [
+class QUIC1RTTPacket(QUICShortHeaderPacket):
+    fields_desc = QUICShortHeaderPacket.fields_desc + [
         BitField("spin", 0, 1),
         # Must be 0
         BitField("reserved", 0, 2),
@@ -134,18 +142,18 @@ class QUIC1RTT(QUICPacket):
 # Binding layers
 bind_layers(UDP, QUICPacket, dport=443)
 bind_layers(UDP, QUICPacket, sport=443)
-bind_layers(QUICPacket, QUICLongHeader, header_form=1)
-bind_layers(QUICPacket, QUIC1RTT, header_form=0)
-bind_layers(QUICLongHeader, QUICInitial, type=0)
-bind_layers(QUICLongHeader, QUIC0RTT, type=1)
-bind_layers(QUICLongHeader, QUICHandshake, type=2)
-bind_layers(QUICLongHeader, QUICRetry, type=3)
+bind_layers(QUICPacket, QUICLongHeaderPacket, header_form=1)
+bind_layers(QUICPacket, QUICShortHeaderPacket, header_form=0)
+bind_layers(QUICLongHeaderPacket, QUICInitialPacket, type=0)
+bind_layers(QUICLongHeaderPacket, QUIC0RTTPacket, type=1)
+bind_layers(QUICLongHeaderPacket, QUICHandshakePacket, type=2)
+bind_layers(QUICLongHeaderPacket, QUICRetryPacket, type=3)
 
 # Test Example
 pkt = (
     IP()
     / UDP()
-    / QUICInitial(
+    / QUICInitialPacket(
         version=1, dcid_len=4, dcid="abcd", scid_len=4, scid="1234", packet_number=900
     )
 )
