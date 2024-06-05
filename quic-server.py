@@ -1,4 +1,5 @@
 from scapy.all import *
+import argparse
 from quic_packets import QUICPacket
 
 
@@ -13,14 +14,16 @@ def packet_callback(packet):
 
 
 def main():
-    # Define the network interface to sniff on
-    interface = (
-        "ens3"  # Change this to your network interface (e.g., "wlan0" for Wi-Fi)
-    )
+    # parse arguments
+    parser = argparse.ArgumentParser(description="QUIC server")
+    parser.add_argument("ip", metavar="server_IP", type=str, help="the IP of the server to connect to")
+    parser.add_argument("port", metavar="server_port", type=int, help="port -||-")
+    parser.add_argument("interface", metavar="interface", type=str, help="interface to sniff for packets on")
+    args = parser.parse_args()
 
     # Start sniffing
-    print(f"Sniffing on interface {interface}...")
-    sniff(iface=interface, prn=packet_callback, store=False)
+    print(f"Sniffing on interface {args.interface}, IP {args.ip}, port {args.port}...")
+    sniff(iface=args.interface, filter=f"ip dst {args.ip} and udp dport {str(args.port)}", prn=packet_callback, store=False)
 
 
 if __name__ == "__main__":
