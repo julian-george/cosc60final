@@ -9,6 +9,23 @@ I_INITIATED = "i initiated"
 PEER_INITIATED = "peer initiated"
 
 
+class States:
+    # common states
+    DATA_RECVD = "Data Recvd"
+    RESET_SENT = "Reset Sent"
+    RESRT_RECVD = "Reset Recvd"
+
+    # sender states
+    READY = "Ready"
+    SEND = "Send"
+    DATA_SENT = "Data Sent"
+
+    # receiver states
+    RECV = "Recv"
+    SIZE_KNOWN = "Size Known"
+    DATA_READ = "Data Read"
+
+
 def new_id():
     return randint(1000, 10000)
 
