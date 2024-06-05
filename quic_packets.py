@@ -1,6 +1,6 @@
 from scapy.all import *
 from scapy.fields import *
-from scapy.layers import *
+from scapy.layers.inet import IP, UDP
 
 from quic_frames import VarLenIntField
 
@@ -150,11 +150,12 @@ bind_layers(QUICLongHeaderPacket, QUICHandshakePacket, type=2)
 bind_layers(QUICLongHeaderPacket, QUICRetryPacket, type=3)
 
 # Test Example
-pkt = (
-    IP()
-    / UDP()
-    / QUICInitialPacket(
-        version=1, dcid_len=4, dcid="abcd", scid_len=4, scid="1234", packet_number=900
+if __name__ == "main":
+    pkt = (
+        IP()
+        / UDP()
+        / QUICInitialPacket(
+            version=1, dcid_len=4, dcid="abcd", scid_len=4, scid="1234", packet_number=900
+        )
     )
-)
-pkt.show()
+    pkt.show()
