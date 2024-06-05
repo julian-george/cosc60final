@@ -39,7 +39,7 @@ class ACKRangeField(Field):
 
 
 class QUICFrame(Packet):
-    fields_desc = [XIntField("type", None)]
+    fields_desc = [VarLenIntField("type")]
 
     def guess_payload_class(self, payload):
         if self.type == 0x00:
@@ -48,8 +48,30 @@ class QUICFrame(Packet):
             return QUICPingFrame
         elif self.type == 0x02 or self.type == 0x03:
             return QUICACKFrame
-        elif self.type == 3:
-            return QUICRetryPacket
+        elif self.type == 0x04:
+            return QUICResetStreamFrame
+        elif self.type == 0x05:
+            return QUICStopSendingFrame
+        elif self.type == 0x06:
+            return QUICCryptoFrame
+        elif self.type == 0x07:
+            return QUICNewTokenFrame
+        elif self.type >= 0x08 and self.type <= 0x0F:
+            return QUICStreamFrame
+        elif self.type == 0x10:
+            return QUICMaxDataFrame
+        elif self.type == 0x11:
+            return QUICMaxStreamDataFrame
+        elif self.type == 0x12 or self.type == 0x13:
+            return QUICMaxStreamsFrame
+        elif self.type == 0x14:
+            return QUICDataBlockedFrame
+        elif self.type == 0x15:
+            return QUICStreamDataBlockedFrame
+        elif self.type == 0x16 or self.type == 0x17:
+            return QUICStreamsBlockedFrame
+        elif self.type == 0x18:
+            return QUICNewConnectionIDFrame
 
 
 class QUICPaddingFrame(QUICFrame):
@@ -70,4 +92,84 @@ class QUICACKFrame(QUICFrame):
         ConditionalField(VarLenIntField("ECT0_count"), lambda pkt: pkt.type == 0x03),
         ConditionalField(VarLenIntField("ECT1_count"), lambda pkt: pkt.type == 0x03),
         ConditionalField(VarLenIntField("ECN_CE_count"), lambda pkt: pkt.type == 0x03),
+    ]
+
+
+class QUICResetStreamFrame(QUICFrame):
+    fields_desc = QUICFrame.fields_desc + [
+        VarLenIntField("stream_id"),
+        VarLenIntField("application_protocol_error_code"),
+        VarLenIntField("final_siZe"),
+    ]
+
+
+class QUICStopSendingFrame(QUICFrame):
+    fields_desc = QUICFrame.fields_desc + [
+        VarLenIntField("stream_id"),
+        VarLenIntField("application_protocol_error_code"),
+    ]
+
+
+# Requires payload containing TLS handshake data
+class QUICCryptoFrame(QUICFrame):
+    fields_desc = QUICFrame.fields_desc + [
+        VarLenIntField("offset"),
+        VarLenIntField("length"),
+    ]
+
+
+# Requires payload containing token for use in future 0-RTT Initial packets
+class QUICNewTokenFrame(QUICFrame):
+    fields_desc = QUICFrame.fields_desc + [VarLenIntField("token_length")]
+
+
+# Takes payload containing stream data
+class QUICStreamFrame(QUICFrame):
+    fields_desc = QUICFrame.fields_desc + [
+        VarLenIntField("stream_id"),
+        ConditionalField(
+            VarLenIntField("offset"), lambda pkt: bin(pkt.type)[-3] == "1"
+        ),
+        ConditionalField(
+            VarLenIntField("length"),
+            lambda pkt: bin(pkt.type)[-2] == "1",
+        ),
+    ]
+
+
+class QUICMaxDataFrame(QUICFrame):
+    fields_desc = QUICFrame.fields_desc + [VarLenIntField("maximum_data")]
+
+
+class QUICMaxStreamDataFrame(QUICFrame):
+    fields_desc = QUICFrame.fields_desc + [
+        VarLenIntField("stream_id"),
+        VarLenIntField("maximum_data"),
+    ]
+
+
+class QUICMaxStreamsFrame(QUICFrame):
+    fields_desc = QUICFrame.fields_desc + [VarLenIntField("maximum_streams")]
+
+
+class QUICDataBlockedFrame(QUICFrame):
+    fields_desc = QUICFrame.fields_desc + [VarLenIntField("maximum_data")]
+
+
+class QUICStreamDataBlockedFrame(QUICFrame):
+    fields_desc = QUICFrame.fields_desc + [
+        VarLenIntField("stream_id"),
+        VarLenIntField("maximum_stream_data"),
+    ]
+
+
+class QUICStreamsBlockedFrame(QUICFrame):
+    fields_desc = QUICFrame.fields_desc + [VarLenIntField("maximum_streams")]
+
+
+class QUICNewConnectionIDFrame(QUICFrame):
+    fields_desc = QUICFrame.fields_desc + [
+        VarLenIntField("sequence_number"),
+        VarLenIntField("retire_prior_to"),
+        VarLenIntField("length"),
     ]
