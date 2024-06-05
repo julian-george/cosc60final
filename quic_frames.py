@@ -4,8 +4,11 @@ from quic_fields import VarLenIntField
 
 
 class ACKRangeField(Field):
+
+    __slots__ = ['count_from']
     def __init__(self, name, default, count_from):
-        Field.__init__(self, name, default, fmt="")
+        print(type(name), isinstance(name,str))
+        super().__init__(name, default, fmt="B")
         self.count_from = count_from
 
     def i2m(self, pkt, val):
@@ -207,7 +210,7 @@ class QUICConnectionCloseFrame(QUICFrame):
         ),
         VarLenIntField("reason_phrase_length"),
         XStrLenField(
-            "reason_phrase", length_from=lambda frame: frame.reason_phrase_length
+            "reason_phrase", "", length_from=lambda frame: frame.reason_phrase_length
         ),
     ]
 
