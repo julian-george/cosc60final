@@ -72,6 +72,16 @@ class QUICFrame(Packet):
             return QUICStreamsBlockedFrame
         elif self.type == 0x18:
             return QUICNewConnectionIDFrame
+        elif self.type == 0x19:
+            return QUICRetireConnectionIDFrame
+        elif self.type == 0x1A:
+            return QUICPathChallengeFrame
+        elif self.type == 0x1B:
+            return QUICPathResponseFrame
+        elif self.type == 0x1C or self.type == 0x1D:
+            return QUICConnectionCloseFrame
+        elif self.type == 0x1E:
+            return QUICHandshakeDoneFrame
 
 
 class QUICPaddingFrame(QUICFrame):
@@ -171,5 +181,36 @@ class QUICNewConnectionIDFrame(QUICFrame):
     fields_desc = QUICFrame.fields_desc + [
         VarLenIntField("sequence_number"),
         VarLenIntField("retire_prior_to"),
-        VarLenIntField("length"),
+        ByteField("length", 1),
+        XStrLenField("connection_id", "", length_from=lambda frame: frame.length),
+        ByteField("stateless_reset_token", 16),
     ]
+
+
+class QUICRetireConnectionIDFrame(QUICFrame):
+    fields_desc = QUICFrame.fields_desc + [VarLenIntField("sequence_number")]
+
+
+class QUICPathChallengeFrame(QUICFrame):
+    fields_desc = QUICFrame.fields_desc + [ByteField("data", 8)]
+
+
+class QUICPathResponseFrame(QUICFrame):
+    fields_desc = QUICFrame.fields_desc + [ByteField("data", 8)]
+
+
+class QUICConnectionCloseFrame(QUICFrame):
+    fields_desc = QUICFrame.fields_desc + [
+        VarLenIntField("error_code"),
+        ConditionalField(
+            VarLenIntField("frame_type"), lambda frame: frame.type == 0x1C
+        ),
+        VarLenIntField("reason_phrase_length"),
+        XStrLenField(
+            "reason_phrase", length_from=lambda frame: frame.reason_phrase_length
+        ),
+    ]
+
+
+class QUICHandshakeDoneFrame(QUICFrame):
+    pass
