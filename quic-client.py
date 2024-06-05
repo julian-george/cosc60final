@@ -3,7 +3,7 @@ from scapy.all import *
 from quic_packets import *
 
 def main():
-    p = IP(dst="192.168.64.8") / UDP(sport=10930, dport=443) / QUICPacket()
+    p = IP(dst="192.168.64.8") / UDP(sport=10930, dport=443) / QUICInitialPacket()
     send(p)
 
 
