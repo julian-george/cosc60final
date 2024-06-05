@@ -7,7 +7,6 @@ class ACKRangeField(Field):
 
     __slots__ = ['count_from']
     def __init__(self, name, default, count_from):
-        print(type(name), isinstance(name,str))
         super().__init__(name, default, fmt="B")
         self.count_from = count_from
 
