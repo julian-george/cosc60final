@@ -1,5 +1,5 @@
+from scapy.all import *
 import argparse
-from scapy.all import sniff, rdpcap
 from quic_packets import QUICPacket
 
 
@@ -8,8 +8,9 @@ def packet_callback(packet):
     Callback function to be called for each captured packet.
     Prints a summary of the packet.
     """
-    print(packet.summary())
-    print(QUICPacket(packet))
+    if IP in packet and UDP in packet and packet[UDP].dport == 443:
+        print(packet[IP].summary())
+    # print(QUICPacket(packet))
 
 
 def main():

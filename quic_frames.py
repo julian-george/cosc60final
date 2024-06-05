@@ -7,7 +7,6 @@ class ACKRangeField(Field):
 
     __slots__ = ['count_from']
     def __init__(self, name, default, count_from):
-        print(type(name), isinstance(name,str))
         super().__init__(name, default, fmt="B")
         self.count_from = count_from
 
@@ -88,11 +87,16 @@ class QUICFrame(Packet):
 
 
 class QUICPaddingFrame(QUICFrame):
-    pass
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        self.type = 0x00
+
 
 
 class QUICPingFrame(QUICFrame):
-    pass
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        self.type = 0x01
 
 
 class QUICACKFrame(QUICFrame):
@@ -107,6 +111,11 @@ class QUICACKFrame(QUICFrame):
         ConditionalField(VarLenIntField("ECN_CE_count"), lambda pkt: pkt.type == 0x03),
     ]
 
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        if self.type != 0x02 or self.type != 0x03:
+            self.type = 0x02
+
 
 class QUICResetStreamFrame(QUICFrame):
     fields_desc = QUICFrame.fields_desc + [
@@ -114,6 +123,9 @@ class QUICResetStreamFrame(QUICFrame):
         VarLenIntField("application_protocol_error_code"),
         VarLenIntField("final_siZe"),
     ]
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        self.type = 0x04
 
 
 class QUICStopSendingFrame(QUICFrame):
@@ -121,6 +133,9 @@ class QUICStopSendingFrame(QUICFrame):
         VarLenIntField("stream_id"),
         VarLenIntField("application_protocol_error_code"),
     ]
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        self.type = 0x05
 
 
 # Requires payload containing TLS handshake data
@@ -129,11 +144,17 @@ class QUICCryptoFrame(QUICFrame):
         VarLenIntField("offset"),
         VarLenIntField("length"),
     ]
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        self.type = 0x06
 
 
 # Requires payload containing token for use in future 0-RTT Initial packets
 class QUICNewTokenFrame(QUICFrame):
     fields_desc = QUICFrame.fields_desc + [VarLenIntField("token_length")]
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        self.type = 0x07
 
 
 # Takes payload containing stream data
@@ -148,10 +169,18 @@ class QUICStreamFrame(QUICFrame):
             lambda pkt: bin(pkt.type)[-2] == "1",
         ),
     ]
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        if self.type <0x08  or self.type >= 0x0f:
+            self.type = 0x08
+    
 
 
 class QUICMaxDataFrame(QUICFrame):
     fields_desc = QUICFrame.fields_desc + [VarLenIntField("maximum_data")]
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        self.type = 0x10
 
 
 class QUICMaxStreamDataFrame(QUICFrame):
@@ -159,14 +188,24 @@ class QUICMaxStreamDataFrame(QUICFrame):
         VarLenIntField("stream_id"),
         VarLenIntField("maximum_data"),
     ]
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        self.type = 0x11
 
 
 class QUICMaxStreamsFrame(QUICFrame):
     fields_desc = QUICFrame.fields_desc + [VarLenIntField("maximum_streams")]
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        if self.type != 0x12 or self.type != 0x13:
+            self.type = 0x12
 
 
 class QUICDataBlockedFrame(QUICFrame):
     fields_desc = QUICFrame.fields_desc + [VarLenIntField("maximum_data")]
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        self.type = 0x14
 
 
 class QUICStreamDataBlockedFrame(QUICFrame):
@@ -174,10 +213,17 @@ class QUICStreamDataBlockedFrame(QUICFrame):
         VarLenIntField("stream_id"),
         VarLenIntField("maximum_stream_data"),
     ]
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        self.type = 0x15
 
 
 class QUICStreamsBlockedFrame(QUICFrame):
     fields_desc = QUICFrame.fields_desc + [VarLenIntField("maximum_streams")]
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        if self.type != 0x16 or self.type != 0x17:
+            self.type = 0x16
 
 
 class QUICNewConnectionIDFrame(QUICFrame):
@@ -188,18 +234,30 @@ class QUICNewConnectionIDFrame(QUICFrame):
         XStrLenField("connection_id", "", length_from=lambda frame: frame.length),
         ByteField("stateless_reset_token", 16),
     ]
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        self.type = 0x18
 
 
 class QUICRetireConnectionIDFrame(QUICFrame):
     fields_desc = QUICFrame.fields_desc + [VarLenIntField("sequence_number")]
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        self.type = 0x19
 
 
 class QUICPathChallengeFrame(QUICFrame):
     fields_desc = QUICFrame.fields_desc + [ByteField("data", 8)]
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        self.type = 0x1a
 
 
 class QUICPathResponseFrame(QUICFrame):
     fields_desc = QUICFrame.fields_desc + [ByteField("data", 8)]
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        self.type = 0x1b
 
 
 class QUICConnectionCloseFrame(QUICFrame):
@@ -213,7 +271,14 @@ class QUICConnectionCloseFrame(QUICFrame):
             "reason_phrase", "", length_from=lambda frame: frame.reason_phrase_length
         ),
     ]
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        if self.type != 0x1c or self.type != 0x1d:
+            self.type = 0x1c
 
 
 class QUICHandshakeDoneFrame(QUICFrame):
-    pass
+    def __init__(self, *args, **kwargs):
+        super(QUICFrame, self).__init__(*args, **kwargs)
+        self.type = 0x1e
+            
