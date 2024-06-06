@@ -13,7 +13,7 @@ class States:
     # common states
     DATA_RECVD = "Data Recvd"
     RESET_SENT = "Reset Sent"
-    RESRT_RECVD = "Reset Recvd"
+    RESET_RECVD = "Reset Recvd"
 
     # sender states
     READY = "Ready"
@@ -24,6 +24,7 @@ class States:
     RECV = "Recv"
     SIZE_KNOWN = "Size Known"
     DATA_READ = "Data Read"
+    RESET_READ = "Reset Read"
 
 
 def new_id():
@@ -39,6 +40,7 @@ class Direction:
 class Sender(Direction):
     def __init__(self):
         super().__init__()
+        self.state = States.READY
 
     def send_packet(self):
         pkt = (
@@ -55,6 +57,7 @@ class Receiver(Direction):
     def __init__(self):
         super().__init__()
         self.buffer = []
+        self.state = States.RECV
 
     def add_to_buffer(self, payload):
         self.buffer.append(payload)
@@ -67,11 +70,11 @@ class Receiver(Direction):
 class Stream:
     def __init__(self, direction, initiator):
         if direction == BIDIRECTIONAL:
-            self.sender = Direction()
-            self.receiver = Direction()
+            self.sender = Sender()
+            self.receiver = Receiver()
         elif direction == UNIDIRECTIONAL:
-            self.sender = Direction() if initiator == I_INITIATED else None
-            self.receiver = Direction() if initiator == PEER_INITIATED else None
+            self.sender = Sender() if initiator == I_INITIATED else None
+            self.receiver = Receiver() if initiator == PEER_INITIATED else None
 
 
 class Connection:
@@ -87,8 +90,10 @@ class Connection:
             return None
         return self.streams[stream_id]
 
-    def add_stream(self, direction, initiator, stream_id):
-        self.streams[stream_id if stream_id is not None else new_id()] = Stream(direction, initiator)
+    def new_stream(self, direction, initiator, stream_id):
+        new_stream = Stream(direction, initiator)
+        self.streams[stream_id if stream_id is not None else new_id()] = new_stream
+        return new_stream
 
     def remove_stream(self, stream_id):
         self.streams.pop(stream_id)

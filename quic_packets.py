@@ -149,6 +149,21 @@ bind_layers(QUICLongHeaderPacket, QUIC0RTTPacket, type=1)
 bind_layers(QUICLongHeaderPacket, QUICHandshakePacket, type=2)
 bind_layers(QUICLongHeaderPacket, QUICRetryPacket, type=3)
 
+
+def parse_packet(payload):
+    """ given a sequence of bytes, return a QUIC packet object. """
+    pkt = QUICPacket()
+    pkt.do_dissect(payload)
+    print(pkt)
+    payload_class = pkt.guess_payload_class(payload)
+    if payload_class == QUICLongHeaderPacket:
+        pkt = QUICLongHeaderPacket()
+    elif payload_class == QUIC1RTTPacket:
+        pkt = QUIC1RTTPacket()
+    pkt.do_dissect(payload)
+    return pkt
+
+
 # Test Example
 if __name__ == "main":
     pkt = (
